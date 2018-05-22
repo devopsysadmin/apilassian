@@ -1,0 +1,4 @@
+six==1.10.0
+requests==2.9.1
+PyYAML==3.11
+Pygments==2.2.0

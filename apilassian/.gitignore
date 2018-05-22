@@ -1,0 +1,7 @@
+*.pyc
+test*.py
+__pycache__
+*.egg-info
+build
+dist
+*.sublime*
