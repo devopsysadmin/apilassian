@@ -2,7 +2,7 @@
 # -*- encoding: utf8 -*-
 
 ## Crowd library to work with Crowd API
-from atlassianapi.session import HEADERS, STATUS_OK
+from apilassian.session import HEADERS, STATUS_OK
 import requests
 import json
 import xml.etree.ElementTree as ET

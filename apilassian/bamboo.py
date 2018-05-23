@@ -1,4 +1,4 @@
-from atlassianapi import session as SESSION
+from apilassian import session as SESSION
 
 URL = {
     'api' : '/rest/api/latest',
