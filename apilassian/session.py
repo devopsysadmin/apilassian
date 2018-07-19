@@ -37,7 +37,7 @@ def get_from_settings(key, args):
                 value = yml.get(app, dict()).get(key)
     return value
 
-def paginated(session, url, page_size=DEFAULT_PAGE_SIZE):
+def paginated(session, url, end_key, end_value, page_size=DEFAULT_PAGE_SIZE):
     array = list()
     start = 0
     end = False
@@ -48,9 +48,11 @@ def paginated(session, url, page_size=DEFAULT_PAGE_SIZE):
     while not end:
         response = session.get(page %(url, start))
         start += page_size
-        end = response.get('isLastPage')
-        if response.get('status') in STATUS_OK:
-            array.extend(response.get('values'))
+        if response.value.get(end_key) == end_value:
+            end = True
+        if response.ok:
+            print(response.value)
+            array.extend(response.value.get('values'))
         else:
             end = True
     return array
@@ -95,8 +97,6 @@ class Session(object):
         self.content_type = args.get('content_type', 'json')
         token = args.get('token', None)
 
-        ## Username and Password are ALWAYS asked with any API, so let's get them
-        ## with arguments, file or environment
         self.username = get_from_settings('username', args)
         self.password = get_from_settings('password', args)
 
@@ -105,8 +105,9 @@ class Session(object):
 
         requests.adapters.DEFAULT_RETRIES = args.get('retries', DEFAULT_RETRIES)
 
-        if token is not None:
-            self.session.headers.update(token)
+        if token:
+            self.session.headers.update({'Authorization': 'Bearer %s' %token})
+
         elif self.username is not None and self.password is not None:
             self.session.auth = (self.username, self.password)
 

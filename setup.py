@@ -9,12 +9,12 @@ setup(name='apilassian',
       description='Atlassian API implementation',
       url='https://github.com/devopsysadmin/apilassian.git',
       license='GPLv2',
-      packages=['apilassian'],
+      packages=['apilassian', 'atcli'],
       zip_safe=False,
       install_requires=[line for line in open('requirements.txt')],
       entry_points={
         'console_scripts': [
-            'bamboo-cli = bamboo_cli.py:main'
+            'atcli = atcli.py:main'
             ],
         },
       )

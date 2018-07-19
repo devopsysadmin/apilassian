@@ -1,12 +1,11 @@
-# python imports
-
-# devops apps imports
-from .constants import (BBUCKET_API_PATH, BBUCKET_PERM_API_PATH,
-    BBUCKET_MATCHERTYPE_BRANCH)
+from apilassian.session import paginated
+import json as Json
 
 DEFAULT_PAGE_SIZE = 25
+DEFAULT_PAGE_END_KEY = 'isLastPage'
+DEFAULT_PAGE_END_VALUE = True
 MAX_LOOP_PAGES = 1000
-
+API = '/rest/api/1.0'
 
 def search(arraydict, **keyvalue):
     key, value = list(keyvalue.items())[0]
@@ -16,26 +15,84 @@ def search(arraydict, **keyvalue):
     else:
         return None
 
+def _paginated(session, url):
+    return paginated(session, url,
+                        end_key=DEFAULT_PAGE_END_KEY,
+                        end_value=DEFAULT_PAGE_END_VALUE,
+                        page_size=DEFAULT_PAGE_SIZE
+                    )
 
-def paginated(session, url, page_size=DEFAULT_PAGE_SIZE):
-    array = list()
-    start = 0
-    end = False
-    if '?' in url:
-        page = '%s&start=%s'
-    else:
-        page = '%s?start=%s'
-    while not end:
-        response = session.get(page % (url, start))
-        start += page_size
-        end = response.value.get('isLastPage', True)
-        if response.ok:
-            array.extend(response.value.get('values'))
+
+class Bitbucket(object):
+
+    def __init__(self, session):
+        self.session = session
+        self.route = API
+
+    def projects(self, name=None):
+        if name:
+            return Project(self.session, name)
         else:
-            end = True
-    return array
+            return Project.all(self.session)
 
 
+class Project(object):
+    context = '{api}/projects'
+
+    @staticmethod
+    def all(session):
+        url = Project.context.format(api=API)
+        projects = _paginated(session=session, url=url)
+        return projects
+
+    def __init__(self, session, project):
+        self.project = project
+        self.session = session
+        self.context = '{context}/{project}'.format(context=self.context,
+                                                    project=self.project)\
+                                            .format(api=API)
+
+    def get(self):
+        response = self.session.get(self.context)
+        if response.ok:
+            self.json = response.value
+        return self
+
+
+    def repos(self, slug=None):
+        if slug:
+            return Repo(session=self.session, project=self.project, slug=slug)
+        else:
+            return Repo.all(self.session, self.project)
+
+
+class Repo(object):
+    context = '{api}/projects/{project}/repos'
+
+    @staticmethod
+    def all(session, project):
+        url = Repo.context.format(api=API, project=project)
+        repos = _paginated(session, url)
+        return repos
+
+    def __init__(self, session, project, slug):
+        self.session = session
+        self.slug = slug
+        self.project = project
+        self.context = '{context}/{slug}'.format(context=self.context,
+                                                 slug=slug)\
+                                         .format(api=API,
+                                                 project=project)
+
+    def get(self):
+        response = self.session.get(self.context)
+        if response.ok:
+            self.json = response.value
+        return self
+
+
+
+'''
 class Group(object):
 
     session = None
@@ -51,33 +108,7 @@ class Group(object):
         return sorted(groups)
 
 
-class Project(object):
-    session = None
-    project = None
-    context = '{api}/projects'
 
-    @staticmethod
-    def all(session):
-        url = Project.context.format(api=BBUCKET_API_PATH)
-        projects = paginated(session.get(url))
-        return sorted(projects)
-
-    def __init__(self, session, project):
-        self.project = project
-        self.session = session
-        self.context = '{context}/{project}'.format(context=self.context,
-                                                    project=self.project)\
-                                            .format(api=BBUCKET_API_PATH)
-
-    def json(self):
-        response = self.session.get(self.context)
-        return response.value
-
-    def repos(self, slug=None):
-        if slug:
-            return Repo(session=self.session, project=self.project, slug=slug)
-        else:
-            return Repo.all(self.session, self.project)
 
 
 class Repo(object):
@@ -129,28 +160,6 @@ class Repo(object):
             response  = self.session.post(self.context, json = data)
             return response.ok
 
-    def __init__(self, session, project, slug):
-        self.session = session
-        self.slug = slug
-        self.project = project
-        self.context = '{context}/{slug}'.format(context=self.context,
-                                                 slug=slug)\
-                                         .format(api=BBUCKET_API_PATH,
-                                                 project=project)
-        self.tags = self.Tag(session=session, project=project, slug=slug, context=self.context)
-        self.branches = self.Branch(session=session, project=project, slug=slug, context=self.context)
-
-    @staticmethod
-    def all(session, project):
-        _repos = paginated(session,
-                           Repo.context.format(
-                               api=BBUCKET_API_PATH,
-                               project=project))
-        return sorted(_repos)
-
-    def json(self):
-        response = self.session.get(self.context)
-        return response.value
 
     def pullrequests(self, key=None):
         if key:
@@ -367,3 +376,4 @@ class Branch:
             return {"errors": "Invalid API response %s" % response.value}
 
         return response.value['values']
+'''
