@@ -1,7 +1,6 @@
-from apilassian import bitbucket, session
+from apilassian import session
+from apilassian import bitbucket
 import json
-
-INDENT = 2
 
 def call(action):
     return globals().get(action)
@@ -17,14 +16,14 @@ def bb(args):
 
 def pprint(response):
     if isinstance(response, list):
-        print( json.dumps(response, indent=INDENT) )
+        print( json.dumps(response) )
     else:    
-        print( json.dumps(response.json, indent=INDENT) )
+        print( json.dumps(response.json) )
 
 def projects(args):
     project = args.get('project', None)
     if project:
-        response = bb(args).projects(project).get()
+        response = bb(args).projects(project).me()
     else:
         response = bb(args).projects()
     pprint(response)
@@ -33,10 +32,19 @@ def repos(args):
     project = args.get('project', None)
     repo = args.get('repo', None)
     if repo:
-        response = bb(args).projects(project).repos(repo).get()
+        response = bb(args).projects(project).repos(repo).me()
     else:
         response = bb(args).projects(project).repos()
     pprint(response)
 
 def tags(args):
-    print(args)
+    project = args.get('project', None)
+    repo = args.get('repo', None)
+    response = bb(args).projects(project).repos(repo).tags()
+    pprint(response)
+
+def branches(args):
+    project = args.get('project', None)
+    repo = args.get('repo', None)
+    response = bb(args).projects(project).repos(repo).branches(simple=True)
+    pprint(response)

@@ -1,11 +1,5 @@
+from apilassian.bitbucket.settings import *
 from apilassian.session import paginated
-import json as Json
-
-DEFAULT_PAGE_SIZE = 25
-DEFAULT_PAGE_END_KEY = 'isLastPage'
-DEFAULT_PAGE_END_VALUE = True
-MAX_LOOP_PAGES = 1000
-API = '/rest/api/1.0'
 
 def search(arraydict, **keyvalue):
     key, value = list(keyvalue.items())[0]
@@ -23,37 +17,24 @@ def _paginated(session, url):
                     )
 
 
-class Bitbucket(object):
-
-    def __init__(self, session):
-        self.session = session
-        self.route = API
-
-    def projects(self, name=None):
-        if name:
-            return Project(self.session, name)
-        else:
-            return Project.all(self.session)
-
-
 class Project(object):
-    context = '{api}/projects'
+    route = '{api}/projects'
 
     @staticmethod
     def all(session):
-        url = Project.context.format(api=API)
+        url = Project.route.format(api=API)
         projects = _paginated(session=session, url=url)
         return projects
 
     def __init__(self, session, project):
         self.project = project
         self.session = session
-        self.context = '{context}/{project}'.format(context=self.context,
+        self.route = '{context}/{project}'.format(context=self.route,
                                                     project=self.project)\
                                             .format(api=API)
 
-    def get(self):
-        response = self.session.get(self.context)
+    def me(self):
+        response = self.session.get(self.route)
         if response.ok:
             self.json = response.value
         return self
@@ -67,11 +48,11 @@ class Project(object):
 
 
 class Repo(object):
-    context = '{api}/projects/{project}/repos'
+    route = '{api}/projects/{project}/repos'
 
     @staticmethod
     def all(session, project):
-        url = Repo.context.format(api=API, project=project)
+        url = Repo.route.format(api=API, project=project)
         repos = _paginated(session, url)
         return repos
 
@@ -79,38 +60,44 @@ class Repo(object):
         self.session = session
         self.slug = slug
         self.project = project
-        self.context = '{context}/{slug}'.format(context=self.context,
+        self.route = '{context}/{slug}'.format(context=self.route,
                                                  slug=slug)\
                                          .format(api=API,
                                                  project=project)
 
-    def get(self):
-        response = self.session.get(self.context)
+    def me(self):
+        response = self.session.get(self.route)
         if response.ok:
             self.json = response.value
         return self
 
 
+    def tags(self):
+        context = '{route}/tags'.format(route=self.route)
+        response = self.session.get(context)
+        if response.ok:
+            return [ tag['displayId'] for tag in response.value['values'] ]
+
+
+    def branches(self, name=None, simple=False):
+        context = '{route}/branches'.format(route=self.route)
+        response = session.get(context)
+        if response.ok:
+            if simple:
+                return [ element['displayId'] for element in response.value['values'] ]
+            else:
+                return response.value['values']
+
+    def commits(self, hash=None):
+        pass
+
+
+class Commit(object):
+    route = '{api}/projects/{project}/repos/{repo}'
+
+
 
 '''
-class Group(object):
-
-    session = None
-    context = '{api}/groups'
-
-    def __init__(self, session):
-        self.session = session
-
-    @staticmethod
-    def all(session):
-        url = Group.context.format(api=BBUCKET_API_PATH)
-        groups = paginated(session, url)
-        return sorted(groups)
-
-
-
-
-
 class Repo(object):
     session = None
     project = None
@@ -123,10 +110,11 @@ class Repo(object):
             self.session = session
             self.project = project
             self.slug = slug
-            self.context = '{context}/tags'.format(context=context)
+            self.route = '{context}/tags'.format(context=context)
 
         def get(self):
-            response = self.session.get(self.context)
+            self.route = '{context}/tags'.format(context=context)
+            response = self.session.get(self.route)
             if response.ok:
                 return [ tag['displayId'] for tag in response.value['values'] ]
 
@@ -136,7 +124,7 @@ class Repo(object):
                     'startPoint' : commit
                     }
             if message: data.update({'message' : message})
-            response = self.session.post(self.context, json = data)
+            response = self.session.post(self.route, json = data)
             return response.ok
 
     class Branch(object):
@@ -144,21 +132,13 @@ class Repo(object):
             self.session = session
             self.project = project
             self.slug = slug
-            self.context = '{context}/branches'.format(context=context)
 
         def get(self):
-            response = self.session.get(self.context)
+            self.route = '{context}/branches'.format(context=context)
+            response = self.session.get(self.route)
             if response.ok:
                 return response.value['values']
 
-        def set(self, commit, name, message=None):
-            data = {
-                'name' : name,
-                'startPoint': commit
-            }
-            if message: data.update({'message' : message})
-            response  = self.session.post(self.context, json = data)
-            return response.ok
 
 
     def pullrequests(self, key=None):
@@ -192,7 +172,7 @@ class PullRequest(object):
         self.slug = slug
         self.key = key
         self.__attributes = kwargs.get('json', kwargs)
-        self.context = '{context}/{key}'.format(context=self.context,
+        self.route = '{context}/{key}'.format(context=self.route,
                                                 key=self.key)\
                                         .format(api=BBUCKET_API_PATH,
                                                 project=self.project,
@@ -211,7 +191,7 @@ class PullRequest(object):
         return QUICK_MAP.get(key, self.__attributes.get(key, None))
 
     def json(self):
-        request = self.session.get(self.context)
+        request = self.session.get(self.route)
         return request.value
 
     @staticmethod
@@ -225,7 +205,7 @@ class PullRequest(object):
     def merge(self):
         version = self.get('version')
         url = '{context}/merge?version={version}'.format(
-            context=self.context,
+            context=self.route,
             version=version)
         request = self.session.post(url)
         return request
